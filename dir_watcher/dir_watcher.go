@@ -2,6 +2,7 @@ package dir_watcher
 
 import (
 	"errors"
+	"path/filepath"
 	"fmt"
   "github.com/howeyc/fsnotify"
   "os"
@@ -23,12 +24,8 @@ type Watcher struct {
 }
 
 func Watch(dirnames []string) (w Watcher, err error) {
-	dirs_to_watch := make(chan string, 50)
-	go func() {
-		for _, dir := range dirnames {
-			dirs_to_watch <- dir
-		}
-	}()
+	dirs_to_watch := make(chan []string, 50)
+	dirs_to_watch <- dirnames
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -41,11 +38,20 @@ func Watch(dirnames []string) (w Watcher, err error) {
 	return
 }
 
-func watchDirs(watcher *fsnotify.Watcher, dirs_to_watch chan string) {
+func watchDirs(watcher *fsnotify.Watcher, dirs_to_watch chan []string) {
 	for {
 		select {
-		case dirname := <- dirs_to_watch:
-			processDirname(watcher, dirname, dirs_to_watch)
+		case dirnames := <- dirs_to_watch:
+			subdirs := make([]string, 0, 5)
+			for _, d := range dirnames {
+				for _,sd := range processDirname(watcher, d) {
+					subdirs = append(subdirs, sd)
+				}
+			}
+			if len(subdirs) > 0 {
+				//fmt.Printf("Adding to queue: %v\n" , subdirs)
+				dirs_to_watch <- subdirs
+			}
 		default:
 			fmt.Println("DONE")
 			return
@@ -53,33 +59,45 @@ func watchDirs(watcher *fsnotify.Watcher, dirs_to_watch chan string) {
 	}
 }
 
-func processDirname(watcher *fsnotify.Watcher, dirname string, dirs_to_watch chan string) {
-	err := watcher.Watch(dirname)
+func processDirname(watcher *fsnotify.Watcher, dirname string) (subdirs []string) {
+	//fmt.Printf("processDirname %v %d %v %x\n", dirname, len(dirname), subdirs, len(subdirs))
+	abs_path, _ := filepath.Abs(dirname)
+	err := watcher.Watch(abs_path)
 	if err != nil {
 		panic("failed initiating watch on " + dirname + " " + err.Error())
 	}
-	fmt.Fprintln(os.Stderr, "Now watching", dirname)
+	//fmt.Fprintln(os.Stderr, "Now watching", dirname)
 
 	dir, err := os.Open(dirname)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Could not open", dirname, "got error", err)
 	}
-	subdirs, err := dir.Readdirnames(-1)
+	defer dir.Close()
+
+	dir_entries, err := dir.Readdir(-1)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Could not readdirnames", dirname, "got error", err)
+		fmt.Fprintln(os.Stderr, "Could not readdir", dirname, "got error", err)
 	}
-	for _, subdirname := range subdirs {
-		dirs_to_watch <- dirname + string(os.PathSeparator) + subdirname
+
+	for _, entry := range dir_entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		abs_name, _ := filepath.Abs(dirname + string(os.PathSeparator) + entry.Name())
+		//fmt.Println("ABS: ", dirname, string(os.PathSeparator), entry.Name(), abs_name)
+		subdirs = append(subdirs, abs_name)
 	}
+
+	return
 }
 
 func (w Watcher) Close() {
-	fmt.Println("Closing")
+	//fmt.Println("Closing")
 	go func() {
 		for e:= range w.watcher.Error {
 			fmt.Println("Error " + e.Error())
 		}
 	}()
 	w.watcher.Close()
-	fmt.Println("after Closing")
 }
