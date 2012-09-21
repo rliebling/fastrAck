@@ -3,7 +3,7 @@ package main
 import (
   //"github.com/howeyc/fsnotify"
 	"github.com/rliebling/codesearch/index"
-  "github.com/rliebling/ackinaflash/dir_watcher"
+  "github.com/rliebling/fastrAck/dir_watcher"
 	"path/filepath"
 	"flag"
   "fmt"
