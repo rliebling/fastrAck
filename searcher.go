@@ -45,8 +45,8 @@ func search(args... string) {
 	g := regexp.Grep{
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
+		N: true,
 	}
-	g.AddFlags()
 
 	pat := "(?m)" + args[0]
 	if *iFlag {
