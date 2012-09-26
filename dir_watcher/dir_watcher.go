@@ -23,7 +23,7 @@ type Watcher struct {
 	watcher fsnotify.Watcher
 }
 
-func Watch(dirnames []string) (w Watcher, err error) {
+func Watch(dirnames []string, dir_filter func(string)bool) (w Watcher, err error) {
 	dirs_to_watch := make(chan []string, 50)
 	dirs_to_watch <- dirnames
 
@@ -33,19 +33,23 @@ func Watch(dirnames []string) (w Watcher, err error) {
 	}
 	//defer watcher.Close()
 
-	watchDirs(watcher, dirs_to_watch)
-	w = Watcher{Events: watcher.Event}
+	watchDirs(watcher, dirs_to_watch, dir_filter)
+	w = Watcher{Events: pathNormalizer(watcher.Event)}
 	return
 }
 
-func watchDirs(watcher *fsnotify.Watcher, dirs_to_watch chan []string) {
+func watchDirs(watcher *fsnotify.Watcher, dirs_to_watch chan []string, dir_filter func(string)bool) {
 	for {
 		select {
 		case dirnames := <- dirs_to_watch:
 			subdirs := make([]string, 0, 5)
 			for _, d := range dirnames {
 				for _,sd := range processDirname(watcher, d) {
-					subdirs = append(subdirs, sd)
+					if dir_filter(sd) {
+						subdirs = append(subdirs, sd)
+					} else {
+						fmt.Println("Filtering out", sd)
+					}
 				}
 			}
 			if len(subdirs) > 0 {
@@ -100,4 +104,20 @@ func (w Watcher) Close() {
 		}
 	}()
 	w.watcher.Close()
+}
+
+func pathNormalizer(in chan *fsnotify.FileEvent) chan *fsnotify.FileEvent {
+	out := make(chan *fsnotify.FileEvent, 10)
+	go func() {
+		for {
+			e := <-in
+			norm_name, err := filepath.Abs(e.Name)
+			if err != nil {
+				panic("Error: failed normalizing " + e.Name)
+			}
+			e.Name = norm_name
+			out<- e
+		}
+	}()
+	return out
 }

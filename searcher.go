@@ -9,7 +9,7 @@ import (
   "fmt"
 	"io"
   "os"
-	"strings"
+//	"strings"
 	"time"
 )
 
@@ -17,8 +17,14 @@ type fileset map[string]bool
 
 func main() {
 	flag.Parse()
-  fmt.Printf("Hello %v\n", flag.Args())
-	watcher, err := dir_watcher.Watch(flag.Args())
+	curdir,_ := filepath.Abs(".")
+  fmt.Printf("Hello %v %v\n", flag.Args(), curdir)
+	watcher, err := dir_watcher.Watch(flag.Args(), func(dirname string)bool {
+		_, elem := filepath.Split(dirname)
+		// Skip various temporary or "hidden" files or directories.
+		return !(elem[0] == '.' || elem[0] == '#' || elem[0] == '~' || elem[len(elem)-1] == '~')
+	})
+
 	if err != nil {
 		panic("Failed to watch successfully " + err.Error())
 	}
@@ -33,10 +39,15 @@ func main() {
 		for {
 			select {
 			case ev := <- watcher.Events:
+				finfo, err := os.Stat(ev.Name)
+				if err != nil || finfo.IsDir() {
+					continue
+				}
+
 				if !ev.IsDelete() {
 					//fmt.Printf("EVENT: %s %#v\n" , ev.Name ,  ev)
-					name := strings.Replace(ev.Name, "/", "\\", -1)
-					to_reindex[name] = true
+					//name := strings.Replace(ev.Name, "/", "\\", -1)
+					to_reindex[ev.Name] = true
 					waitPeriod = 10 * time.Second
 				}
 			case <-time.After(waitPeriod):
@@ -57,20 +68,20 @@ func main() {
 				path_array[i] = p
 				i++
 			}
-			reindex(path_array)
+			reindex(path_array, curdir)
 		case <-search_request:
 		}
 
 	}
 }
 
-func reindex(paths []string) {
+func reindex(paths []string, curdir string) {
 	fmt.Printf("Reindexing %v\n", paths)
 	master := index.File()
 	file := master + "~"
 	ix := index.Create(file)
-	ix.AddPaths([]string{"c:\\Users\\rich\\workspace\\sitm"})
-	//ix.AddPaths([]string{"c:\\Users\\rich\\workspace\\go\\src\\github.com\\rliebling\\ackinaflash"})
+	//ix.AddPaths([]string{curdir})
+	//ix.AddPaths([]string{"c:\\Users\\rich\\workspace\\sitm"})
 	for _, p := range paths {
 		if _, elem := filepath.Split(p); elem != "" {
 			// Skip various temporary or "hidden" files or directories.
@@ -83,7 +94,8 @@ func reindex(paths []string) {
 				continue
 			}
 		}
-		fmt.Println("AddFile " , p)
+		//fmt.Println("AddFile " , p)
+		ix.AddPaths([]string{p})
 		ix.AddFile(p)
 	}
 	ix.Flush()
@@ -94,7 +106,7 @@ func reindex(paths []string) {
 	if err != nil {
 		panic("copy: " + err.Error())
 	}
-	err = os.Remove(file)
+	//err = os.Remove(file)
 	if err != nil {
 		panic("Remove: " + err.Error())
 	}
