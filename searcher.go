@@ -33,6 +33,7 @@ var (
 func main() {
 	flag.Parse()
 	if *watchFlag {
+		createIndex(".")
 		watch(".")
 	} else if *indexFlag {
 		createIndex(".")
