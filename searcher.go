@@ -193,7 +193,7 @@ func watch(args... string) {
 					continue
 				}
 
-				if !skip_reindex(ev.Name) {
+				if !ev.IsDelete() && !skip_reindex(ev.Name) { // need to handle delete by NOT reindexing this file
 					//fmt.Printf("EVENT: %s %#v\n" , ev.Name ,  ev)
 					//name := strings.Replace(ev.Name, "/", "\\", -1)
 					to_reindex[ev.Name] = true
@@ -240,6 +240,7 @@ func skip_reindex(name string) bool {
 }
 
 func reindex(paths []string, curdir string) {
+	paths = preparePaths(paths)
 	log.Printf("Reindexing %v\n", paths)
 	master := *indexFilename
 	log.Println("Master is ", master)
