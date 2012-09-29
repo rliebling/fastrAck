@@ -228,11 +228,11 @@ func skip_reindex(name string) bool {
 	if _, elem := filepath.Split(name); elem != "" {
 		// Skip various temporary or "hidden" files or directories.
 		if elem[0] == '.' || elem[0] == '#' || elem[0] == '~' || elem[len(elem)-1] == '~' {
-			fmt.Println("Skipping " + name)
+			log.Println("Skipping " + name)
 			return true
 		}
 		if _,err := os.Stat(name); err!=nil {
-			fmt.Println("Skipping (err stat'ing )" + name)
+			log.Println("Skipping (err stat'ing )" + name)
 			return true
 		}
 	}
@@ -246,6 +246,8 @@ func reindex(paths []string, curdir string) {
 	log.Println("Master is ", master)
 	file := master + "~"
 	ix := index.Create(file)
+	defer cleanupFile(file)
+
 	//ix.AddPaths([]string{curdir})
 	//ix.AddPaths([]string{"c:\\Users\\rich\\workspace\\sitm"})
 	added_files := false
@@ -253,15 +255,15 @@ func reindex(paths []string, curdir string) {
 		if _, elem := filepath.Split(p); elem != "" {
 			// Skip various temporary or "hidden" files or directories.
 			if elem[0] == '.' || elem[0] == '#' || elem[0] == '~' || elem[len(elem)-1] == '~' {
-				fmt.Println("Skipping " + p)
+				log.Println("reindex skipping " + p)
 				continue
 			}
 			if _,err := os.Stat(p); err!=nil {
-				fmt.Println("Skipping (err stat'ing )" + p)
+				log.Println("reindex skipping (err stat'ing )" + p)
 				continue
 			}
 		}
-		fmt.Println("AddFile " , p)
+		log.Println("AddFile " , p)
 		ix.AddPaths([]string{p})
 		ix.AddFile(p)
 		added_files = true
@@ -270,25 +272,26 @@ func reindex(paths []string, curdir string) {
 	ix.Close()
 
 	if !added_files {
-		os.Remove(file)
 		return
 	}
 
 	index.Merge(file+"~", master, file)
+	defer cleanupFile(file+"~")
+
 	_, err := copyFile(master, file+"~")
 	if err != nil {
 		panic("copy: " + err.Error())
 	}
-	err = os.Remove(file)
-	if err != nil {
-		panic("Remove: " + err.Error())
-	}
-	err = os.Remove(file+"~")
-	if err != nil {
-		panic("Remove: " + err.Error())
-	}
-	fmt.Println("Updated file " + master)
+	log.Println("Updated file " + master)
 }
+
+func cleanupFile(file string) {
+	err := os.Remove(file)
+	if err != nil {
+		panic("Remove: " + err.Error())
+	}
+}
+
 
 func copyFile(dstName, srcName string) (written int64, err error) {
     src, err := os.Open(srcName)
