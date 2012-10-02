@@ -11,9 +11,12 @@ import (
 	"io"
 	"log"
   "os"
+  "os/exec"
 	"sort"
-//	"strings"
+	"strings"
+	"syscall"
 	"time"
+	"github.com/kless/terminal"
 )
 
 type fileset map[string]bool
@@ -22,6 +25,7 @@ var (
 	fileFilterFlag = flag.String("f", "", "search only files with names matching this regexp")
 	fileExclusionFlag = flag.String("F", "", "search excluding files with names matching this regexp")
 	iFlag       = flag.Bool("i", false, "case-insensitive search")
+	colorFlag   = flag.Bool("color", true, "show results with coloring")
 	listFlag    = flag.Bool("list", false, "list indexed paths and exit")
 	indexFlag   = flag.Bool("index", false, "create index")
 	watchFlag   = flag.Bool("watch", false, "watch for changes")
@@ -43,10 +47,21 @@ func main() {
 }
 
 func search(args... string) {
-	g := regexp.Grep{
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-		N: true,
+	var stdout io.WriteCloser
+	var err error
+	if strings.HasPrefix(os.Getenv("OS"),"Windows") {
+		fmt.Println("is a terminal?", terminal.IsTerminal(syscall.Stdout))
+		cmd := exec.Command("ruby","-rubygems", "-rwin32console","-e","puts STDIN.readlines")
+		cmd.Stdout = os.Stdout
+		stdout, err = cmd.StdinPipe();
+		cmd.Start()
+		defer cmd.Wait()
+		defer stdout.Close()
+	} else {
+		stdout = os.Stdout
+	}
+
+	g := MyGrep {
 	}
 
 	pat := "(?m)" + args[0]
@@ -105,9 +120,15 @@ func search(args... string) {
 		post = fnames
 	}
 
+	var results *MyGrepResult
 	for _, fileid := range post {
 		name := ix.Name(fileid)
-		g.File(name)
+		results = g.File(name, NeedMatches)
+		if results.IsMatch {
+			for _, m := range results.Matches {
+				fmt.Fprintf(stdout, "%v:%d: %s", name, m.LineNumber, m.Line)
+			}
+		}
 	}
 
 	//matches = g.Match
