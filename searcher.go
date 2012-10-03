@@ -46,11 +46,35 @@ func main() {
 	}
 }
 
+
 func search(args... string) {
 	var stdout io.WriteCloser
 	var err error
-	if strings.HasPrefix(os.Getenv("OS"),"Windows") {
-		fmt.Println("is a terminal?", terminal.IsTerminal(syscall.Stdout))
+
+	/*
+	func match_callback(name string) {
+		fmt.Fprintf(stdout, "%s\n", name)
+	}
+	func match_callback_color(name string) {
+		fmt.Fprintf(stdout, "\033[1;31m%s\033[0m\n", name)
+	}
+	func line_callback(name, line string, line_number int) {
+		fmt.Fprintf(stdout, "%s:%d: %s\n", name, line_number, line[:len(line)-1])
+	}
+	func line_callback_color(name, line string, line_number int) {
+		fmt.Fprintf(stdout, "%d|\t%s\n", line_number, line[:len(line)-1])
+	}
+	func count_callback(name string, count int) {
+		fmt.Fprintf(stdout, "%s matches %d\n", name, count)
+	}
+	*/
+
+	is_terminal := terminal.IsTerminal(syscall.Stdout)
+	if !is_terminal {
+		*colorFlag = false
+	}
+
+	if *colorFlag && strings.HasPrefix(os.Getenv("OS"),"Windows") {
 		cmd := exec.Command("ruby","-rubygems", "-rwin32console","-e","puts STDIN.readlines")
 		cmd.Stdout = os.Stdout
 		stdout, err = cmd.StdinPipe();
@@ -61,7 +85,27 @@ func search(args... string) {
 		stdout = os.Stdout
 	}
 
-	g := MyGrep {
+	g := Grepper{}
+	if is_terminal {
+		if *colorFlag {
+			g.MatchCallback = func (name string) {
+				fmt.Fprintf(stdout, "\033[1;31m%s\033[0m\n", name)
+			}
+			g.LineCallback = func (name, line string, line_number int) {
+				fmt.Fprintf(stdout, "%d|\t%s\n", line_number, line[:len(line)-1])
+			}
+		} else {
+			g.MatchCallback = func (name string) {
+				fmt.Fprintf(stdout, "%s\n", name)
+			}
+			g.LineCallback = func (name, line string, line_number int) {
+				fmt.Fprintf(stdout, "%d|\t%s\n", line_number, line[:len(line)-1])
+			}
+		}
+	} else {
+		g.LineCallback = func (name, line string, line_number int) {
+			fmt.Fprintf(stdout, "%s:%d: %s\n", name, line_number, line[:len(line)-1])
+		}
 	}
 
 	pat := "(?m)" + args[0]
@@ -120,15 +164,9 @@ func search(args... string) {
 		post = fnames
 	}
 
-	var results *MyGrepResult
 	for _, fileid := range post {
 		name := ix.Name(fileid)
-		results = g.File(name, NeedMatches)
-		if results.IsMatch {
-			for _, m := range results.Matches {
-				fmt.Fprintf(stdout, "%v:%d: %s", name, m.LineNumber, m.Line)
-			}
-		}
+		g.File(name)
 	}
 
 	//matches = g.Match

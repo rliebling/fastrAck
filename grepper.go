@@ -9,43 +9,23 @@ import (
 )
 
 
-type MyGrep struct {
+type Grepper struct {
 	Regexp *Regexp   // regexp to search for
-	Stderr io.Writer // error target
-
-	Match bool
-
+	MatchCallback func(name string)
+	LineCallback func(name, line string, line_number int)
+	CountCallback func(name string, count int)
 	buf []byte
 }
-type MyGrepResult struct {
-	IsMatch bool
-	Count int
-	Matches []MyGrepMatch
-}
 
-type MyGrepRequest int
-const (
-	NeedMatches MyGrepRequest = iota
-	NeedFileOnly
-	NeedCountOnly
-)
-
-type MyGrepMatch struct {
-	Line string
-	LineNumber int
-  MatchStartIndex int
-	MatchEndIndex int
-}
-
-func (g *MyGrep) File(name string, data_needed MyGrepRequest) ( *MyGrepResult) {
+func (g *Grepper) File(name string) {
 	f, err := os.Open(name)
 	if err != nil {
-		fmt.Fprintf(g.Stderr, "%s\n", err)
+		fmt.Fprintf(os.Stderr, "%s\n", err)
 		fmt.Println("ERROR", err)
-		return new( MyGrepResult)
+		return
 	}
 	defer f.Close()
-	return g.Reader(f, data_needed)
+	g.Reader(f, name)
 }
 
 var nl = []byte{'\n'}
@@ -63,8 +43,7 @@ func countNL(b []byte) int {
 	return n
 }
 
-func (g *MyGrep) Reader(r io.Reader, data_needed MyGrepRequest) (result *MyGrepResult) {
-	result = new(MyGrepResult)
+func (g *Grepper) Reader(r io.Reader, name string) {
 	if g.buf == nil {
 		g.buf = make([]byte, 1<<20)
 	}
@@ -73,6 +52,8 @@ func (g *MyGrep) Reader(r io.Reader, data_needed MyGrepRequest) (result *MyGrepR
 		lineno     = 1
 		beginText  = true
 		endText    = false
+		only_match_file = g.LineCallback==nil && g.CountCallback == nil
+		count      = 0
 	)
 	for {
 		n, err := io.ReadFull(r, buf[len(buf):cap(buf)])
@@ -90,9 +71,10 @@ func (g *MyGrep) Reader(r io.Reader, data_needed MyGrepRequest) (result *MyGrepR
 			if m1 < chunkStart {
 				break
 			}
-			g.Match = true
-			result.IsMatch = true
-			if data_needed == NeedFileOnly {
+			if g.MatchCallback != nil {
+				g.MatchCallback(name)
+			}
+			if only_match_file {
 				return
 			}
 
@@ -104,9 +86,9 @@ func (g *MyGrep) Reader(r io.Reader, data_needed MyGrepRequest) (result *MyGrepR
 			lineno += countNL(buf[chunkStart:lineStart])
 			line := buf[lineStart:lineEnd]
 
-			result.Count++
-			if data_needed == NeedMatches {
-				result.Matches = append(result.Matches, MyGrepMatch{Line: string(line), LineNumber: lineno, MatchStartIndex:0 })
+			count++
+			if g.LineCallback != nil {
+				g.LineCallback(name, string(line), lineno)
 			}
 			lineno++
 			chunkStart = lineEnd
@@ -122,6 +104,9 @@ func (g *MyGrep) Reader(r io.Reader, data_needed MyGrepRequest) (result *MyGrepR
 			}
 			break
 		}
+	}
+	if g.CountCallback != nil && count > 0 {
+		g.CountCallback(name, count)
 	}
 	return
 }
