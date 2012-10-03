@@ -4,6 +4,7 @@ import (
   //"github.com/howeyc/fsnotify"
 	"github.com/rliebling/codesearch/index"
 	"github.com/rliebling/codesearch/regexp"
+	std_regexp "regexp"
   "github.com/rliebling/fastrAck/dir_watcher"
 	"path/filepath"
 	"flag"
@@ -85,14 +86,27 @@ func search(args... string) {
 		stdout = os.Stdout
 	}
 
+
+	pat := "(?m)" + args[0]
+	if *iFlag {
+		pat = "(?i)" + pat
+	}
+	re, err := regexp.Compile(pat)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	g := Grepper{}
 	if is_terminal {
 		if *colorFlag {
 			g.MatchCallback = func (name string) {
 				fmt.Fprintf(stdout, "\033[1;31m%s\033[0m\n", name)
 			}
+			std_re, _ := std_regexp.Compile(pat)
 			g.LineCallback = func (name, line string, line_number int) {
-				fmt.Fprintf(stdout, "%d|\t%s\n", line_number, line[:len(line)-1])
+				// nuke EOL and wrap with coloring
+				result := std_re.ReplaceAllString(line[:len(line)-1], "\033[1;37m\033[1;41m$0\033[0m")
+				fmt.Fprintf(stdout, "%d|\t%s\n", line_number, result)
 			}
 		} else {
 			g.MatchCallback = func (name string) {
@@ -106,15 +120,6 @@ func search(args... string) {
 		g.LineCallback = func (name, line string, line_number int) {
 			fmt.Fprintf(stdout, "%s:%d: %s\n", name, line_number, line[:len(line)-1])
 		}
-	}
-
-	pat := "(?m)" + args[0]
-	if *iFlag {
-		pat = "(?i)" + pat
-	}
-	re, err := regexp.Compile(pat)
-	if err != nil {
-		log.Fatal(err)
 	}
 	g.Regexp = re
 	var fre, fexclusion_re *regexp.Regexp
