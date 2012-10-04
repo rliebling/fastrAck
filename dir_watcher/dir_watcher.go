@@ -4,7 +4,7 @@ import (
 	"errors"
 	"path/filepath"
 	"fmt"
-  "github.com/howeyc/fsnotify"
+  "github.com/rliebling/fsnotify"
   "os"
 )
 
