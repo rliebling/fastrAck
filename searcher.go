@@ -105,7 +105,11 @@ func search(args... string) {
 			std_re, _ := std_regexp.Compile(pat)
 			g.LineCallback = func (name, line string, line_number int) {
 				// nuke EOL and wrap with coloring
-				result := std_re.ReplaceAllString(line[:len(line)-1], "\033[1;37m\033[1;41m$0\033[0m")
+				eol := len(line)
+				if line[eol-1:eol] == "\n" {
+					eol = eol - 1
+				}
+				result := std_re.ReplaceAllString(line[:eol], "\033[1;37m\033[1;41m$0\033[0m")
 				fmt.Fprintf(stdout, "%d|\t%s\n", line_number, result)
 			}
 		} else {
