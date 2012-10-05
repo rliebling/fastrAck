@@ -17,7 +17,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
-	"github.com/kless/terminal"
+	"github.com/rliebling/terminal"
 )
 
 type fileset map[string]bool
