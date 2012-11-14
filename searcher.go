@@ -26,6 +26,7 @@ var (
 	fileFilterFlag = flag.String("f", "", "search only files with names matching this regexp")
 	fileExclusionFlag = flag.String("F", "", "search excluding files with names matching this regexp")
 	iFlag       = flag.Bool("i", false, "case-insensitive search")
+	nameOnlyFlag = flag.Bool("l", false, "only print filenames that match")
 	colorFlag   = flag.Bool("color", true, "show results with coloring")
 	listFlag    = flag.Bool("list", false, "list indexed paths and exit")
 	indexFlag   = flag.Bool("index", false, "create index")
@@ -102,27 +103,37 @@ func search(args... string) {
 			g.MatchCallback = func (name string) {
 				fmt.Fprintf(stdout, "\033[1;31m%s\033[0m\n", name)
 			}
-			std_re, _ := std_regexp.Compile(pat)
-			g.LineCallback = func (name, line string, line_number int) {
-				// nuke EOL and wrap with coloring
-				eol := len(line)
-				if line[eol-1:eol] == "\n" {
-					eol = eol - 1
+			if !*nameOnlyFlag {
+				std_re, _ := std_regexp.Compile(pat)
+				g.LineCallback = func (name, line string, line_number int) {
+					// nuke EOL and wrap with coloring
+					eol := len(line)
+					if line[eol-1:eol] == "\n" {
+						eol = eol - 1
+					}
+					result := std_re.ReplaceAllString(line[:eol], "\033[1;37m\033[1;41m$0\033[0m")
+					fmt.Fprintf(stdout, "%d|\t%s\n", line_number, result)
 				}
-				result := std_re.ReplaceAllString(line[:eol], "\033[1;37m\033[1;41m$0\033[0m")
-				fmt.Fprintf(stdout, "%d|\t%s\n", line_number, result)
 			}
 		} else {
 			g.MatchCallback = func (name string) {
 				fmt.Fprintf(stdout, "%s\n", name)
 			}
-			g.LineCallback = func (name, line string, line_number int) {
-				fmt.Fprintf(stdout, "%d|\t%s\n", line_number, line[:len(line)-1])
+			if !*nameOnlyFlag {
+				g.LineCallback = func (name, line string, line_number int) {
+					fmt.Fprintf(stdout, "%d|\t%s\n", line_number, line[:len(line)-1])
+				}
 			}
 		}
 	} else {
-		g.LineCallback = func (name, line string, line_number int) {
-			fmt.Fprintf(stdout, "%s:%d: %s\n", name, line_number, line[:len(line)-1])
+		if *nameOnlyFlag {
+			g.MatchCallback = func (name string) {
+				fmt.Fprintf(stdout, "%s\n", name)
+			}
+		} else {
+			g.LineCallback = func (name, line string, line_number int) {
+				fmt.Fprintf(stdout, "%s:%d: %s\n", name, line_number, line[:len(line)-1])
+			}
 		}
 	}
 	g.Regexp = re
