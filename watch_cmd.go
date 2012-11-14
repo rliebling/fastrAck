@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime/pprof"
 	"time"
@@ -17,7 +18,11 @@ func watch(args ...string) {
 	fmt.Printf("Hello %v %v\n", args, curdir)
 	watcher, err := dir_watcher.Watch(args, func(dirname string) bool {
 		_, elem := filepath.Split(dirname)
-		// Skip various temporary or "hidden" files or directories.
+		// Skip various temporary, binary or "hidden" files or directories.
+		extension := path.Ext(elem)
+		if extension == ".jpg" || extension == ".png" || extension == ".gif" || extension == ".jpeg" {
+			return false
+		}
 		return !(elem[0] == '.' || elem[0] == '#' || elem[0] == '~' || elem[len(elem)-1] == '~')
 	})
 
