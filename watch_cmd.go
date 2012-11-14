@@ -1,21 +1,21 @@
 package main
 
 import (
-	"path/filepath"
 	"fmt"
+	"github.com/rliebling/codesearch/index"
+	"github.com/rliebling/fastrAck/dir_watcher"
 	"io"
 	"log"
-	"time"
 	"os"
-  "github.com/rliebling/fastrAck/dir_watcher"
-	"github.com/rliebling/codesearch/index"
+	"path/filepath"
 	"runtime/pprof"
+	"time"
 )
 
-func watch(args... string) {
-	curdir,_ := filepath.Abs(".")
-  fmt.Printf("Hello %v %v\n", args, curdir)
-	watcher, err := dir_watcher.Watch(args, func(dirname string)bool {
+func watch(args ...string) {
+	curdir, _ := filepath.Abs(".")
+	fmt.Printf("Hello %v %v\n", args, curdir)
+	watcher, err := dir_watcher.Watch(args, func(dirname string) bool {
 		_, elem := filepath.Split(dirname)
 		// Skip various temporary or "hidden" files or directories.
 		return !(elem[0] == '.' || elem[0] == '#' || elem[0] == '~' || elem[len(elem)-1] == '~')
@@ -34,7 +34,7 @@ func watch(args... string) {
 	go func() {
 		for {
 			select {
-			case ev := <- watcher.Events:
+			case ev := <-watcher.Events:
 				finfo, err := os.Stat(ev.Name)
 				if err != nil || finfo.IsDir() {
 					continue
@@ -52,7 +52,7 @@ func watch(args... string) {
 				to_reindex = make(fileset, 100)
 				waitPeriod = 1000 * time.Hour
 				prof_file, err := os.Create("profile.prof")
-				if err!=nil {
+				if err != nil {
 					log.Println("**************************************")
 					log.Println("No profile because " + err.Error())
 					log.Println("**************************************")
@@ -72,7 +72,7 @@ func watch(args... string) {
 		case paths := <-trigger_reindex:
 			path_array := make([]string, len(paths))
 			i := 0
-			for p,_ := range paths {
+			for p, _ := range paths {
 				path_array[i] = p
 				i++
 			}
@@ -90,7 +90,7 @@ func skip_reindex(name string) bool {
 			log.Println("Skipping " + name)
 			return true
 		}
-		if _,err := os.Stat(name); err!=nil {
+		if _, err := os.Stat(name); err != nil {
 			log.Println("Skipping (err stat'ing )" + name)
 			return true
 		}
@@ -117,12 +117,12 @@ func reindex(paths []string, curdir string) {
 				log.Println("reindex skipping " + p)
 				continue
 			}
-			if _,err := os.Stat(p); err!=nil {
+			if _, err := os.Stat(p); err != nil {
 				log.Println("reindex skipping (err stat'ing )" + p)
 				continue
 			}
 		}
-		log.Println("AddFile " , p)
+		log.Println("AddFile ", p)
 		ix.AddPaths([]string{p})
 		ix.AddFile(p)
 		added_files = true
@@ -135,7 +135,7 @@ func reindex(paths []string, curdir string) {
 	}
 
 	index.Merge(file+"~", master, file)
-	defer cleanupFile(file+"~")
+	defer cleanupFile(file + "~")
 
 	_, err := copyFile(master, file+"~")
 	if err != nil {
@@ -152,17 +152,17 @@ func cleanupFile(file string) {
 }
 
 func copyFile(dstName, srcName string) (written int64, err error) {
-    src, err := os.Open(srcName)
-    if err != nil {
-        return
-    }
-    defer src.Close()
+	src, err := os.Open(srcName)
+	if err != nil {
+		return
+	}
+	defer src.Close()
 
-    dst, err := os.Create(dstName)
-    if err != nil {
-        return
-    }
-    defer dst.Close()
+	dst, err := os.Create(dstName)
+	if err != nil {
+		return
+	}
+	defer dst.Close()
 
-    return io.Copy(dst, src)
+	return io.Copy(dst, src)
 }

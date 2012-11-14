@@ -1,12 +1,11 @@
 package main
 
-
 import (
-	"path/filepath"
-	"log"
-	"sort"
 	"github.com/rliebling/codesearch/index"
+	"log"
 	"os"
+	"path/filepath"
+	"sort"
 )
 
 func preparePaths(args []string) []string {
@@ -27,7 +26,7 @@ func preparePaths(args []string) []string {
 	return args
 }
 
-func createIndex(args... string) {
+func createIndex(args ...string) {
 	dirs_to_index := preparePaths(args)
 	ix := index.Create(*indexFilename)
 	ix.Verbose = *verboseFlag
@@ -61,4 +60,3 @@ func createIndex(args... string) {
 	log.Printf("done")
 	return
 }
-

@@ -2,19 +2,18 @@ package main
 
 import (
 	"bytes"
-	"os"
-	"io"
 	"fmt"
 	. "github.com/rliebling/codesearch/regexp"
+	"io"
+	"os"
 )
 
-
 type Grepper struct {
-	Regexp *Regexp   // regexp to search for
+	Regexp        *Regexp // regexp to search for
 	MatchCallback func(name string)
-	LineCallback func(name, line string, line_number int)
+	LineCallback  func(name, line string, line_number int)
 	CountCallback func(name string, count int)
-	buf []byte
+	buf           []byte
 }
 
 func (g *Grepper) File(name string) {
@@ -48,12 +47,12 @@ func (g *Grepper) Reader(r io.Reader, name string) {
 		g.buf = make([]byte, 1<<20)
 	}
 	var (
-		buf        = g.buf[:0]
-		lineno     = 1
-		beginText  = true
-		endText    = false
-		only_match_file = g.LineCallback==nil && g.CountCallback == nil
-		count      = 0
+		buf             = g.buf[:0]
+		lineno          = 1
+		beginText       = true
+		endText         = false
+		only_match_file = g.LineCallback == nil && g.CountCallback == nil
+		count           = 0
 	)
 	for {
 		n, err := io.ReadFull(r, buf[len(buf):cap(buf)])

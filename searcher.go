@@ -1,35 +1,35 @@
 package main
 
 import (
-  //"github.com/howeyc/fsnotify"
+	//"github.com/howeyc/fsnotify"
+	"flag"
+	"fmt"
 	"github.com/rliebling/codesearch/index"
 	"github.com/rliebling/codesearch/regexp"
-	std_regexp "regexp"
-	"flag"
-  "fmt"
+	"github.com/rliebling/terminal"
 	"io"
 	"log"
-  "os"
-  "os/exec"
+	"os"
+	"os/exec"
+	std_regexp "regexp"
 	"strings"
 	"syscall"
-	"github.com/rliebling/terminal"
 )
 
 type fileset map[string]bool
 
 var (
-	fileFilterFlag = flag.String("f", "", "search only files with names matching this regexp")
+	fileFilterFlag    = flag.String("f", "", "search only files with names matching this regexp")
 	fileExclusionFlag = flag.String("F", "", "search excluding files with names matching this regexp")
-	iFlag       = flag.Bool("i", false, "case-insensitive search")
-	nameOnlyFlag = flag.Bool("l", false, "only print filenames that match")
-	colorFlag   = flag.Bool("color", true, "show results with coloring")
-	listFlag    = flag.Bool("list", false, "list indexed paths and exit")
-	indexFlag   = flag.Bool("index", false, "create index")
-	watchFlag   = flag.Bool("watch", false, "watch for changes")
-	indexFilename = flag.String("file", "./.cindex", "index filename")
-	verboseFlag = flag.Bool("verbose", false, "print extra information")
-	cpuProfile  = flag.String("cpuprofile", "", "write cpu profile to this file")
+	iFlag             = flag.Bool("i", false, "case-insensitive search")
+	nameOnlyFlag      = flag.Bool("l", false, "only print filenames that match")
+	colorFlag         = flag.Bool("color", true, "show results with coloring")
+	listFlag          = flag.Bool("list", false, "list indexed paths and exit")
+	indexFlag         = flag.Bool("index", false, "create index")
+	watchFlag         = flag.Bool("watch", false, "watch for changes")
+	indexFilename     = flag.String("file", "./.cindex", "index filename")
+	verboseFlag       = flag.Bool("verbose", false, "print extra information")
+	cpuProfile        = flag.String("cpuprofile", "", "write cpu profile to this file")
 )
 
 func main() {
@@ -44,27 +44,26 @@ func main() {
 	}
 }
 
-
-func search(args... string) {
+func search(args ...string) {
 	var stdout io.WriteCloser
 	var err error
 
 	/*
-	func match_callback(name string) {
-		fmt.Fprintf(stdout, "%s\n", name)
-	}
-	func match_callback_color(name string) {
-		fmt.Fprintf(stdout, "\033[1;31m%s\033[0m\n", name)
-	}
-	func line_callback(name, line string, line_number int) {
-		fmt.Fprintf(stdout, "%s:%d: %s\n", name, line_number, line[:len(line)-1])
-	}
-	func line_callback_color(name, line string, line_number int) {
-		fmt.Fprintf(stdout, "%d|\t%s\n", line_number, line[:len(line)-1])
-	}
-	func count_callback(name string, count int) {
-		fmt.Fprintf(stdout, "%s matches %d\n", name, count)
-	}
+		func match_callback(name string) {
+			fmt.Fprintf(stdout, "%s\n", name)
+		}
+		func match_callback_color(name string) {
+			fmt.Fprintf(stdout, "\033[1;31m%s\033[0m\n", name)
+		}
+		func line_callback(name, line string, line_number int) {
+			fmt.Fprintf(stdout, "%s:%d: %s\n", name, line_number, line[:len(line)-1])
+		}
+		func line_callback_color(name, line string, line_number int) {
+			fmt.Fprintf(stdout, "%d|\t%s\n", line_number, line[:len(line)-1])
+		}
+		func count_callback(name string, count int) {
+			fmt.Fprintf(stdout, "%s matches %d\n", name, count)
+		}
 	*/
 
 	is_terminal := terminal.IsTerminal(syscall.Stdout)
@@ -72,17 +71,16 @@ func search(args... string) {
 		*colorFlag = false
 	}
 
-	if *colorFlag && strings.HasPrefix(os.Getenv("OS"),"Windows") {
-		cmd := exec.Command("ruby","-rubygems", "-rwin32console","-e","puts STDIN.readlines")
+	if *colorFlag && strings.HasPrefix(os.Getenv("OS"), "Windows") {
+		cmd := exec.Command("ruby", "-rubygems", "-rwin32console", "-e", "puts STDIN.readlines")
 		cmd.Stdout = os.Stdout
-		stdout, err = cmd.StdinPipe();
+		stdout, err = cmd.StdinPipe()
 		cmd.Start()
 		defer cmd.Wait()
 		defer stdout.Close()
 	} else {
 		stdout = os.Stdout
 	}
-
 
 	pat := "(?m)" + args[0]
 	if *iFlag {
@@ -96,12 +94,12 @@ func search(args... string) {
 	g := Grepper{}
 	if is_terminal {
 		if *colorFlag {
-			g.MatchCallback = func (name string) {
+			g.MatchCallback = func(name string) {
 				fmt.Fprintf(stdout, "\033[1;31m%s\033[0m\n", name)
 			}
 			if !*nameOnlyFlag {
 				std_re, _ := std_regexp.Compile(pat)
-				g.LineCallback = func (name, line string, line_number int) {
+				g.LineCallback = func(name, line string, line_number int) {
 					// nuke EOL and wrap with coloring
 					eol := len(line)
 					if line[eol-1:eol] == "\n" {
@@ -112,22 +110,22 @@ func search(args... string) {
 				}
 			}
 		} else {
-			g.MatchCallback = func (name string) {
+			g.MatchCallback = func(name string) {
 				fmt.Fprintf(stdout, "%s\n", name)
 			}
 			if !*nameOnlyFlag {
-				g.LineCallback = func (name, line string, line_number int) {
+				g.LineCallback = func(name, line string, line_number int) {
 					fmt.Fprintf(stdout, "%d|\t%s\n", line_number, line[:len(line)-1])
 				}
 			}
 		}
 	} else {
 		if *nameOnlyFlag {
-			g.MatchCallback = func (name string) {
+			g.MatchCallback = func(name string) {
 				fmt.Fprintf(stdout, "%s\n", name)
 			}
 		} else {
-			g.LineCallback = func (name, line string, line_number int) {
+			g.LineCallback = func(name, line string, line_number int) {
 				fmt.Fprintf(stdout, "%s:%d: %s\n", name, line_number, line[:len(line)-1])
 			}
 		}
@@ -165,10 +163,10 @@ func search(args... string) {
 
 		for _, fileid := range post {
 			name := ix.Name(fileid)
-			if fre!=nil && fre.MatchString(name, true, true) < 0 {
+			if fre != nil && fre.MatchString(name, true, true) < 0 {
 				continue
 			}
-			if fexclusion_re!=nil && fexclusion_re.MatchString(name, true, true) >= 0 {
+			if fexclusion_re != nil && fexclusion_re.MatchString(name, true, true) >= 0 {
 				continue
 			}
 			fnames = append(fnames, fileid)
@@ -187,4 +185,3 @@ func search(args... string) {
 
 	//matches = g.Match
 }
-
