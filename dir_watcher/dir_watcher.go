@@ -31,7 +31,6 @@ func Watch(dirnames []string, dir_filter func(string)bool) (w Watcher, err error
 	if err != nil {
 		errors.New("failed initializing watcher " + err.Error())
 	}
-	//defer watcher.Close()
 
 	watchDirs(watcher, dirs_to_watch, dir_filter)
 	w = Watcher{Events: pathNormalizer(watcher.Event)}
