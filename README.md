@@ -48,6 +48,16 @@ NOTE: on OSX, watching a directory maintains open file descriptors for (virtuall
   2.  don't watch the directory tree.  Just use the `-index` flag to build the index on demand.
   3.   use some other tool (eg http://www.rubyinside.com/watchr-more-than-an-automated-test-runner-4590.html) to run the index command whenever a file changes.
 
+On Windows, as a quick way to get the ANSI color code support to work, I pipe the output through a ruby process with the win32console gem.  The code assumes ruby is in the path with this gem available (eg the command `ruby -rwin32console` should work.  If you run without color support (eg where the output is redirected or with --color=false) then you don't need ruby.
+
+## Credits
+
+The really heavy lifting here was done by Russ Cox in the project
+http://code.google.com/p/codesearch. I modified the code a bit to make it clean up after itself better based on some patches that were posted for it.  
+
+Handling of ANSI color codes for terminal output utilizes the terminal library from https://github.com/kless/terminal which I modified slightly to help it build on Windows.
+
+Notifications of file changes (to trigger updating the index) is handled by Chris Howey's library https://github.com/howeyc/fsnotify
 
 ## License
 
