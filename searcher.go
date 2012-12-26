@@ -27,13 +27,17 @@ var (
 	listFlag          = flag.Bool("list", false, "list indexed paths and exit")
 	indexFlag         = flag.Bool("index", false, "create index")
 	watchFlag         = flag.Bool("watch", false, "watch for changes")
-	indexFilename     = flag.String("file", "./.cindex", "index filename")
+	indexFilename     = flag.String("file", ".cindex", "index filename")
 	verboseFlag       = flag.Bool("verbose", false, "print extra information")
 	cpuProfile        = flag.String("cpuprofile", "", "write cpu profile to this file")
 )
 
 func main() {
 	flag.Parse()
+        if len(os.Args) < 2 {
+            flag.PrintDefaults()
+            return
+        }
 	if *watchFlag {
 		createIndex(".")
 		watch(".")
@@ -149,6 +153,12 @@ func search(args ...string) {
 		log.Printf("query: %s\n", q)
 	}
 
+        workingDirectory, _ := os.Getwd()
+        searchDepth := strings.Count(workingDirectory, "/")
+        *indexFilename = findIndexFile(*indexFilename, searchDepth)
+        if !exists(*indexFilename) {
+            log.Fatalf("Could not find %s", *indexFilename)
+        }
 	ix := index.Open(*indexFilename)
 	ix.Verbose = *verboseFlag
 	var post []uint32
@@ -184,4 +194,26 @@ func search(args ...string) {
 	}
 
 	//matches = g.Match
+}
+
+func findIndexFile(indexFileName string, searchDepth int) string {
+    searchPath := indexFileName
+    for depth := 0; depth < searchDepth; depth++ {
+        if exists(searchPath) {
+            if *verboseFlag {
+                log.Printf("Found .cindex in %s", searchPath)
+            }
+            return searchPath
+        }
+        searchPath = "../" + searchPath
+    }
+
+    return indexFileName
+}
+
+func exists(path string) (bool) {
+    _,err := os.Stat(path)
+    if err == nil { return true }
+    if os.IsNotExist(err) { return false }
+    return false
 }
