@@ -195,7 +195,7 @@ func search(args ...string) {
 
 func findIndexFile(indexFileName string) string {
 	workingDirectory, _ := os.Getwd()
-	searchDepth := strings.Count(workingDirectory, "/")
+	searchDepth := strings.Count(workingDirectory, string(os.PathSeparator))
 
 	searchPath := indexFileName
 	for depth := 0; depth < searchDepth; depth++ {
