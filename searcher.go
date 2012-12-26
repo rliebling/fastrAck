@@ -24,7 +24,6 @@ var (
 	iFlag             = flag.Bool("i", false, "case-insensitive search")
 	nameOnlyFlag      = flag.Bool("l", false, "only print filenames that match")
 	colorFlag         = flag.Bool("color", true, "show results with coloring")
-	listFlag          = flag.Bool("list", false, "list indexed paths and exit")
 	indexFlag         = flag.Bool("index", false, "create index")
 	watchFlag         = flag.Bool("watch", false, "watch for changes")
 	indexFilename     = flag.String("file", ".cindex", "index filename")
