@@ -152,9 +152,7 @@ func search(args ...string) {
 		log.Printf("query: %s\n", q)
 	}
 
-	workingDirectory, _ := os.Getwd()
-	searchDepth := strings.Count(workingDirectory, "/")
-	*indexFilename = findIndexFile(*indexFilename, searchDepth)
+	*indexFilename = findIndexFile(*indexFilename)
 	if !exists(*indexFilename) {
 		log.Fatalf("Could not find %s", *indexFilename)
 	}
@@ -195,7 +193,10 @@ func search(args ...string) {
 	//matches = g.Match
 }
 
-func findIndexFile(indexFileName string, searchDepth int) string {
+func findIndexFile(indexFileName string) string {
+	workingDirectory, _ := os.Getwd()
+	searchDepth := strings.Count(workingDirectory, "/")
+
 	searchPath := indexFileName
 	for depth := 0; depth < searchDepth; depth++ {
 		if exists(searchPath) {
