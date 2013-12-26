@@ -24,6 +24,7 @@ var (
 	iFlag             = flag.Bool("i", false, "case-insensitive search")
 	nameOnlyFlag      = flag.Bool("l", false, "only print filenames that match")
 	colorFlag         = flag.Bool("color", true, "show results with coloring")
+	terminalFlag      = flag.Bool("terminal", true, "treat as if going to human reader")
 	indexFlag         = flag.Bool("index", false, "create index")
 	watchFlag         = flag.Bool("watch", false, "watch for changes")
 	indexFilename     = flag.String("file", ".cindex", "index filename")
@@ -51,25 +52,7 @@ func search(args ...string) {
 	var stdout io.WriteCloser
 	var err error
 
-	/*
-		func match_callback(name string) {
-			fmt.Fprintf(stdout, "%s\n", name)
-		}
-		func match_callback_color(name string) {
-			fmt.Fprintf(stdout, "\033[1;31m%s\033[0m\n", name)
-		}
-		func line_callback(name, line string, line_number int) {
-			fmt.Fprintf(stdout, "%s:%d: %s\n", name, line_number, line[:len(line)-1])
-		}
-		func line_callback_color(name, line string, line_number int) {
-			fmt.Fprintf(stdout, "%d|\t%s\n", line_number, line[:len(line)-1])
-		}
-		func count_callback(name string, count int) {
-			fmt.Fprintf(stdout, "%s matches %d\n", name, count)
-		}
-	*/
-
-	is_terminal := terminal.IsTerminal(syscall.Stdout)
+	is_terminal := *terminalFlag && terminal.IsTerminal(syscall.Stdout)
 	if !is_terminal {
 		*colorFlag = false
 	}
