@@ -30,22 +30,26 @@ func preparePaths(args []string) []string {
 
 func createIndex(args ...string) {
 	dirs_to_index := preparePaths(args)
-	filter, _ := gitignorer.NewFilter()
+	filter, _ := gitignorer.NewComposedFilter()
 	ix := index.Create(*indexFilename)
 	ix.Verbose = *verboseFlag
 	ix.AddPaths(dirs_to_index)
 	for _, arg := range dirs_to_index {
-		log.Printf("index %s", arg)
 		filepath.Walk(arg, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				log.Printf("%s: %s", path, err)
 				return nil
 			}
-
 			if filter.Match(path) {
-				return filepath.SkipDir
+				if info.IsDir() {
+					return filepath.SkipDir
+				} else {
+					return nil
+				}
 			}
-
+			if info.IsDir() {
+				filter.ComposeLocalGitignore(path)
+			}
 			if info != nil && isRegularFile(info) {
 				ix.AddFile(path)
 			}
