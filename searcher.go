@@ -112,7 +112,7 @@ func search(args ...string) {
 			}
 		} else {
 			g.LineCallback = func(name, line string, line_number int) {
-				fmt.Fprintf(stdout, "%s:%d: %s\n", name, line_number, line[:len(line)-1])
+				fmt.Fprintf(stdout, "%s:%d:%s\n", name, line_number, line[:len(line)-1])
 			}
 		}
 	}
